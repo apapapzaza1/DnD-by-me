@@ -18,7 +18,7 @@ main{flex:1;display:flex;min-height:0;position:relative}
 label:has(input[type=checkbox]){flex-direction:row;align-items:center;gap:6px}
 .dng{border-color:#7a2e2e;color:#e49a8f}#qr{font-size:28px;color:var(--ac)}ol{padding-left:20px;margin:0}li.on{color:var(--ac);font-weight:700}.mut{color:#9a907d;font-size:12px}
 #modes{position:absolute;left:8px;top:8px;display:flex;flex-direction:column;gap:4px;z-index:3}
-#insp{position:absolute;left:72px;right:8px;top:8px;display:flex;flex-wrap:wrap;gap:4px;background:#1c1812ec;padding:6px;border:1px solid var(--ln);border-radius:8px;align-items:center;z-index:6}
+[hidden]{display:none!important}#insp{position:absolute;left:0;top:0;max-width:min(380px,calc(100% - 8px));display:flex;flex-wrap:wrap;gap:4px;background:#1c1812ec;padding:6px;border:1px solid var(--ln);border-radius:8px;align-items:center;z-index:6}#ig{cursor:grab;padding:4px 6px;user-select:none;font-size:18px;line-height:1;touch-action:none}
 #insp input{width:120px}#back{position:absolute;right:8px;top:8px;opacity:.35;z-index:3}
 #panel.off,.pl #top,.pl #panel,.pl #modes,.pl #insp{display:none}
 @media(max-width:760px){#panel{position:absolute;left:0;right:0;bottom:0;width:auto;height:48%;z-index:5;border-top:1px solid var(--ln)}.lb{display:none}#modes button{padding:8px}}
@@ -30,7 +30,7 @@ label:has(input[type=checkbox]){flex-direction:row;align-items:center;gap:6px}
 <aside id="panel"><nav id="pt" class="chips"></nav><div id="pb"></div></aside></main>
 <script>
 const $=s=>document.querySelector(s),cv=$('#cv'),cx=cv.getContext('2d'),H=location.hash=='#player',Q='dndtable.v1',TN=['คลัง','ฉาก','ลำดับ/ทอย','ข้อมูล'];
-let PL=H,S,sel=null,mode='move',V={x:0,y:0,z:1},FC={},BG={},IM={},tab=0,cat='npc',brush=90,md=0,rolls=[],ls,sd=1;
+let PL=H,S,sel=null,mode='move',V={x:0,y:0,z:1},FC={},BG={},IM={},tab=0,cat='npc',brush=90,md=0,rolls=[],ls,sd=1,IP=null,IC=0;
 const BC=window.BroadcastChannel?new BroadcastChannel('dndtable'):null,R=()=>(sd=sd*16807%2147483647)/2147483647,uid=()=>Math.random().toString(36).slice(2,9);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>'&#'+c.charCodeAt()+';'),sc=()=>S.scenes[S.cur];
 const LIB={
@@ -63,7 +63,7 @@ function draw(){const s=sc(),r=cv.getBoundingClientRect(),d=devicePixelRatio||1;
 cx.setTransform(1,0,0,1,0,0);cx.globalAlpha=1;cx.fillStyle='#0d0b09';cx.fillRect(0,0,cv.width,cv.height);cx.setTransform(V.z*d,0,0,V.z*d,V.x*d,V.y*d);cx.drawImage(bg(s),0,0);
 if(s.gr){cx.strokeStyle='#ffffff26';cx.lineWidth=1/V.z;cx.beginPath();for(let x=0;x<=s.W;x+=s.g){cx.moveTo(x,0);cx.lineTo(x,s.H)}for(let y=0;y<=s.H;y+=s.g){cx.moveTo(0,y);cx.lineTo(s.W,y)}cx.stroke()}
 s.tk.forEach(t=>{if(t.h&&PL)return;cx.globalAlpha=t.h?.45:1;tok(t,s);cx.globalAlpha=1;const r=t.s*s.g/2;if(t.id==sel&&!PL){cx.strokeStyle='#ffd36b';cx.lineWidth=3;cx.beginPath();cx.arc(t.x,t.y,r,0,7);cx.stroke()}if(t.id==S.tn){cx.strokeStyle='#6bd3ff';cx.lineWidth=4;cx.setLineDash([8,6]);cx.beginPath();cx.arc(t.x,t.y,r+5,0,7);cx.stroke();cx.setLineDash([])}});
-if(s.fog){cx.globalAlpha=PL?1:.5;cx.imageSmoothingEnabled=true;cx.drawImage(fg(s),0,0,s.W,s.H);cx.globalAlpha=1}}
+if(s.fog){cx.globalAlpha=PL?1:.5;cx.imageSmoothingEnabled=true;cx.drawImage(fg(s),0,0,s.W,s.H);cx.globalAlpha=1}place()}
 function fit(){const s=sc(),r=cv.getBoundingClientRect();V.z=Math.min(r.width/s.W,r.height/s.H)*.97;V.x=(r.width-s.W*V.z)/2;V.y=(r.height-s.H*V.z)/2;draw()}
 const toW=e=>{const r=cv.getBoundingClientRect();return[(e.clientX-r.left-V.x)/V.z,(e.clientY-r.top-V.y)/V.z]};
 const hit=w=>{const s=sc();for(let i=s.tk.length;i--;){const t=s.tk[i];if(Math.hypot(w[0]-t.x,w[1]-t.y)<t.s*s.g/2)return t}return null};
@@ -80,12 +80,19 @@ if(pt.size==2&&pz){const q=pd();zoomAt(pz[1],pz[2],Math.min(4,Math.max(.1,V.z*q[
 if(!dr)return;const w=toW(e);
 if(dr.t=='f'){stroke(dr.l,w);dr.l=w}else if(dr.t=='k'){dr.k.x=w[0]+dr.dx;dr.k.y=w[1]+dr.dy;mv=1;draw()}else{const dx=e.clientX-dr.px,dy=e.clientY-dr.py;mv+=Math.abs(dx)+Math.abs(dy);V.x+=dx;V.y+=dy;dr.px=e.clientX;dr.py=e.clientY;draw()}};
 cv.onpointerup=cv.onpointercancel=e=>{pt.delete(e.pointerId);pz=null;if(!dr)return;const s=sc();
-if(dr.t=='f'){s.fd=fg(s).toDataURL();save()}else if(dr.t=='k'){snap(dr.k);save();draw()}else if(mv<8&&!PL){sel=dr.k?dr.k.id:null;insp();draw()}dr=null};
+if(dr.t=='f'){s.fd=fg(s).toDataURL();save()}else if(dr.t=='k'){snap(dr.k);save();draw()}else if(mv<8&&!PL){sel=dr.k?dr.k.id:null;IP=null;insp();draw()}dr=null};
 cv.addEventListener('wheel',e=>{e.preventDefault();zoomAt(e.clientX,e.clientY,Math.min(4,Math.max(.1,V.z*(e.deltaY<0?1.12:1/1.12))),e.clientX,e.clientY)},{passive:false});
 function insp(){const b=$('#insp'),t=sc().tk.find(k=>k.id==sel);if(!t||PL){b.hidden=1;return}b.hidden=0;
-b.innerHTML=`<input id="qin" value="${esc(t.n)}"><button data-a="hm">−</button><span>${t.hp??'-'}/${t.mx??'-'}</span><button data-a="hp">+</button><button data-a="hs">ตั้ง HP</button><button data-a="sz">ขนาด ${t.s}</button><button data-a="hd">${t.h?'👁 แสดง':'🙈 ซ่อน'}</button><button data-a="ii">ลำดับ${t.i!=null?' '+t.i:''}</button><button data-a="dp">⧉</button><button data-a="dl">🗑</button>`}
+b.innerHTML=IC?`<span id="ig">⠿</span><button data-a="ex">⚙ ${esc(t.n)}</button>`:`<span id="ig">⠿</span><input id="qin" value="${esc(t.n)}"><button data-a="hm">−</button><span>${t.hp??'-'}/${t.mx??'-'}</span><button data-a="hp">+</button><button data-a="hs">ตั้ง HP</button><button data-a="sz">ขนาด ${t.s}</button><button data-a="hd">${t.h?'👁 แสดง':'🙈 ซ่อน'}</button><button data-a="ii">ลำดับ${t.i!=null?' '+t.i:''}</button><button data-a="dp">⧉</button><button data-a="dl">🗑</button><button data-a="cl">✕</button>`;place()}
+function place(){const b=$('#insp'),t=sc().tk.find(k=>k.id==sel);if(b.hidden||!t)return;const W=cv.clientWidth,Hh=cv.clientHeight,w=b.offsetWidth,h=b.offsetHeight;let x,y;if(IP){x=IP.x;y=IP.y}else{const s=sc(),rp=t.s*s.g/2*V.z,sx=V.x+t.x*V.z,sy=V.y+t.y*V.z;x=sx+rp+8;y=sy-rp;if(x+w>W-4){x=sx-rp-8-w;if(x<4){x=sx-w/2;y=sy+rp+8}}}b.style.left=Math.max(4,Math.min(W-w-4,x))+'px';b.style.top=Math.max(4,Math.min(Hh-h-4,y))+'px'}
+let ig=null;
+$('#insp').onpointerdown=e=>{if(e.target.id!='ig')return;const b=$('#insp'),r=cv.getBoundingClientRect();b.setPointerCapture(e.pointerId);ig={dx:e.clientX-r.left-b.offsetLeft,dy:e.clientY-r.top-b.offsetTop}};
+$('#insp').onpointermove=e=>{if(!ig)return;const r=cv.getBoundingClientRect();IP={x:e.clientX-r.left-ig.dx,y:e.clientY-r.top-ig.dy};place()};
+$('#insp').onpointerup=$('#insp').onpointercancel=()=>{ig=null};
+$('#insp').ondblclick=e=>{if(e.target.id=='ig'){IP=null;place()}};
 $('#insp').oninput=e=>{const t=sc().tk.find(k=>k.id==sel);if(t){t.n=e.target.value;draw();save()}};
 $('#insp').onclick=e=>{const a=e.target.dataset.a,s=sc(),t=s.tk.find(k=>k.id==sel);if(!a||!t)return;
+if(a=='cl')IC=1;if(a=='ex')IC=0;
 if((a=='hm'||a=='hp')&&t.mx!=null)t.hp=Math.max(0,Math.min(t.mx,t.hp+(a=='hp'?1:-1)));
 if(a=='hs'){const v=+prompt('HP สูงสุด',t.mx||10);if(v>0){t.mx=v;t.hp=v}}
 if(a=='sz'){t.s=t.s%4+1;snap(t)}if(a=='hd')t.h=t.h?0:1;
