@@ -20,17 +20,17 @@ label:has(input[type=checkbox]){flex-direction:row;align-items:center;gap:6px}
 #modes{position:absolute;left:8px;top:8px;display:flex;flex-direction:column;gap:4px;z-index:3}
 [hidden]{display:none!important}#insp{position:absolute;left:0;top:0;max-width:min(380px,calc(100% - 8px));display:flex;flex-wrap:wrap;gap:4px;background:#1c1812ec;padding:6px;border:1px solid var(--ln);border-radius:8px;align-items:center;z-index:6}#ig{cursor:grab;padding:4px 6px;user-select:none;font-size:18px;line-height:1;touch-action:none}
 #insp input{width:120px}#back{position:absolute;right:8px;top:8px;opacity:.35;z-index:3}
-#panel.off,.pl #top,.pl #panel,.pl #modes,.pl #insp{display:none}
+#panel.off,.pl #top,.pl #panel,.pl #modes,.pl #insp,.pl #card{display:none}#card,#pcard{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,calc(100% - 16px));max-height:calc(100% - 16px);overflow:auto;background:#1c1812f4;border:2px solid var(--ac);border-radius:10px;padding:12px;z-index:30;display:flex;flex-direction:column;gap:8px}#card textarea{width:100%;font:inherit;color:inherit;background:#2f281f;border:1px solid var(--ln);border-radius:6px;padding:6px;resize:vertical}.cf{flex:1 1 90px}.cf.w2{flex:2 1 160px}.cf input{width:100%}.ab{flex:1 1 64px;text-align:center}.ab input{text-align:center}#pcard h2{margin:0;color:var(--ac)}#pcard p{margin:0;white-space:pre-wrap}
 @media(max-width:760px){#panel{position:absolute;left:0;right:0;bottom:0;width:auto;height:48%;z-index:5;border-top:1px solid var(--ln)}.lb{display:none}#modes button{padding:8px}}
 </style></head><body>
 <header id="top"><button id="bp">☰</button><div id="tabs"></div><button id="bw">🖥️<span class="lb"> จอผู้เล่น</span></button><button id="bm">🙈<span class="lb"> โหมดผู้เล่น</span></button></header>
 <main><div id="stage"><canvas id="cv"></canvas>
 <div id="modes"><button data-m="move" class="on">✋ ย้าย</button><button data-m="rev">🌫️ เปิดหมอก</button><button data-m="cov">⬛ คลุมหมอก</button><button id="fit">⤢ พอดีจอ</button></div>
-<div id="insp" hidden></div><button id="back" hidden>👁 กลับโหมด DM</button></div>
+<div id="insp" hidden></div><button id="back" hidden>👁 กลับโหมด DM</button><div id="card" hidden></div><div id="pcard" hidden></div></div>
 <aside id="panel"><nav id="pt" class="chips"></nav><div id="pb"></div></aside></main>
 <script>
 const $=s=>document.querySelector(s),cv=$('#cv'),cx=cv.getContext('2d'),H=location.hash=='#player',Q='dndtable.v1',TN=['คลัง','ฉาก','ลำดับ/ทอย','ข้อมูล'];
-let PL=H,S,sel=null,mode='move',V={x:0,y:0,z:1},FC={},BG={},IM={},tab=0,cat='npc',brush=90,md=0,rolls=[],ls,sd=1,IP=null,IC=0;
+let PL=H,S,sel=null,mode='move',V={x:0,y:0,z:1},FC={},BG={},IM={},tab=0,cat='npc',brush=90,md=0,rolls=[],ls,sd=1,IP=null,IC=0,IS=0,CID=null;
 const BC=window.BroadcastChannel?new BroadcastChannel('dndtable'):null,R=()=>(sd=sd*16807%2147483647)/2147483647,uid=()=>Math.random().toString(36).slice(2,9);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>'&#'+c.charCodeAt()+';'),sc=()=>S.scenes[S.cur];
 const LIB={
@@ -57,8 +57,9 @@ function fg(s){let f=FC[s.id];if(f)return f;f=FC[s.id]=document.createElement('c
 const img=u=>IM[u]||(IM[u]=Object.assign(new Image(),{src:u,onload:draw}));
 function tok(t,s){const r=t.s*s.g/2*.92,c=CC[t.c]||CC.npc;cx.save();cx.translate(t.x,t.y);const g=cx.createLinearGradient(-r,-r,r,r);g.addColorStop(0,c[0]);g.addColorStop(1,c[1]);cx.fillStyle=g;cx.beginPath();cx.arc(0,0,r,0,7);cx.fill();cx.strokeStyle='#000a';cx.lineWidth=2;cx.stroke();cx.fillStyle='#2a2825';cx.beginPath();cx.arc(0,0,r*.82,0,7);cx.fill();
 if(t.img){const i=img(t.img);if(i.complete){cx.save();cx.beginPath();cx.arc(0,0,r*.82,0,7);cx.clip();cx.drawImage(i,-r*.82,-r*.82,r*1.64,r*1.64);cx.restore()}}else{cx.font=`${r*1.1}px sans-serif`;cx.textAlign='center';cx.textBaseline='middle';if(t.c=='npc')cx.filter='grayscale(1)';cx.fillText(t.e,0,r*.05);cx.filter='none'}
-if(t.hp!=null&&t.mx){const p=Math.max(0,Math.min(1,t.hp/t.mx));cx.fillStyle='#000a';cx.fillRect(-r,r*.9,2*r,r*.18);cx.fillStyle=p>.5?'#5fa05f':p>.25?'#c9a227':'#b8392e';cx.fillRect(-r,r*.9,2*r*p,r*.18)}
-cx.restore();cx.font=`bold ${Math.max(11,s.g*.26)}px 'Noto Serif Thai',serif`;cx.textAlign='center';cx.textBaseline='alphabetic';cx.lineWidth=3;cx.strokeStyle='#000';cx.strokeText(t.n,t.x,t.y+r+s.g*.3);cx.fillStyle='#eee';cx.fillText(t.n,t.x,t.y+r+s.g*.3)}
+cx.restore();cx.font=`bold ${Math.max(11,s.g*.26)}px 'Noto Serif Thai',serif`;cx.textAlign='center';cx.textBaseline='alphabetic';cx.lineWidth=3;cx.strokeStyle='#000';const nm=(t.lv?'Lv'+t.lv+' ':'')+t.n,yy=t.y+r+s.g*.3;cx.strokeText(nm,t.x,yy);cx.fillStyle='#eee';cx.fillText(nm,t.x,yy);
+if(t.hp!=null&&t.mx&&t.hp<t.mx){const bw=Math.max(2*r,s.g*1.3),bh=Math.max(13,s.g*.26),bx=t.x-bw/2,by=yy+5,p=Math.max(0,t.hp/t.mx);cx.fillStyle='#000d';cx.fillRect(bx,by,bw,bh);cx.fillStyle=p>.5?'#5fa05f':p>.25?'#c9a227':'#b8392e';cx.fillRect(bx,by,bw*p,bh);cx.strokeStyle='#000';cx.lineWidth=1.5;cx.strokeRect(bx,by,bw,bh);cx.font=`bold ${bh*.78}px sans-serif`;cx.fillStyle='#fff';cx.lineWidth=2.5;cx.strokeText(t.hp+'/'+t.mx,t.x,by+bh*.8);cx.fillText(t.hp+'/'+t.mx,t.x,by+bh*.8)}
+stRow(t,r,s)}
 function draw(){const s=sc(),r=cv.getBoundingClientRect(),d=devicePixelRatio||1;if(cv.width!=Math.round(r.width*d)){cv.width=Math.round(r.width*d);cv.height=Math.round(r.height*d)}
 cx.setTransform(1,0,0,1,0,0);cx.globalAlpha=1;cx.fillStyle='#0d0b09';cx.fillRect(0,0,cv.width,cv.height);cx.setTransform(V.z*d,0,0,V.z*d,V.x*d,V.y*d);cx.drawImage(bg(s),0,0);
 if(s.gr){cx.strokeStyle='#ffffff26';cx.lineWidth=1/V.z;cx.beginPath();for(let x=0;x<=s.W;x+=s.g){cx.moveTo(x,0);cx.lineTo(x,s.H)}for(let y=0;y<=s.H;y+=s.g){cx.moveTo(0,y);cx.lineTo(s.W,y)}cx.stroke()}
@@ -83,16 +84,31 @@ cv.onpointerup=cv.onpointercancel=e=>{pt.delete(e.pointerId);pz=null;if(!dr)retu
 if(dr.t=='f'){s.fd=fg(s).toDataURL();save()}else if(dr.t=='k'){snap(dr.k);save();draw()}else if(mv<8&&!PL){sel=dr.k?dr.k.id:null;IP=null;insp();draw()}dr=null};
 cv.addEventListener('wheel',e=>{e.preventDefault();zoomAt(e.clientX,e.clientY,Math.min(4,Math.max(.1,V.z*(e.deltaY<0?1.12:1/1.12))),e.clientX,e.clientY)},{passive:false});
 function insp(){const b=$('#insp'),t=sc().tk.find(k=>k.id==sel);if(!t||PL){b.hidden=1;return}b.hidden=0;
-b.innerHTML=IC?`<span id="ig">⠿</span><button data-a="ex">⚙ ${esc(t.n)}</button>`:`<span id="ig">⠿</span><input id="qin" value="${esc(t.n)}"><button data-a="hm">−</button><span>${t.hp??'-'}/${t.mx??'-'}</span><button data-a="hp">+</button><button data-a="hs">ตั้ง HP</button><button data-a="sz">ขนาด ${t.s}</button><button data-a="hd">${t.h?'👁 แสดง':'🙈 ซ่อน'}</button><button data-a="ii">ลำดับ${t.i!=null?' '+t.i:''}</button><button data-a="dp">⧉</button><button data-a="dl">🗑</button><button data-a="cl">✕</button>`;place()}
+b.innerHTML=IC?`<span id="ig">⠿</span><button data-a="ex">⚙ ${esc(t.n)}</button>`:`<span id="ig">⠿</span><input id="qin" value="${esc(t.n)}"><button data-a="hm">−</button><span>${t.hp??'-'}/${t.mx??'-'}</span><button data-a="hp">+</button><button data-a="dm">± HP</button><button data-a="hs">ตั้ง HP</button><button data-a="sz">ขนาด ${t.s}</button><button data-a="hd">${t.h?'👁 แสดง':'🙈 ซ่อน'}</button><button data-a="ii">ลำดับ${t.i!=null?' '+t.i:''}</button><button data-a="st">🏷️ สถานะ</button><button data-a="cd">📋 ข้อมูล</button><button data-a="dp">⧉</button><button data-a="dl">🗑</button><button data-a="cl">✕</button>${IS?chips(t):''}`;place()}
 function place(){const b=$('#insp'),t=sc().tk.find(k=>k.id==sel);if(b.hidden||!t)return;const W=cv.clientWidth,Hh=cv.clientHeight,w=b.offsetWidth,h=b.offsetHeight;let x,y;if(IP){x=IP.x;y=IP.y}else{const s=sc(),rp=t.s*s.g/2*V.z,sx=V.x+t.x*V.z,sy=V.y+t.y*V.z;x=sx+rp+8;y=sy-rp;if(x+w>W-4){x=sx-rp-8-w;if(x<4){x=sx-w/2;y=sy+rp+8}}}b.style.left=Math.max(4,Math.min(W-w-4,x))+'px';b.style.top=Math.max(4,Math.min(Hh-h-4,y))+'px'}
+const ST={fire:['🔥','#e8812a','ไฟลุก'],poison:['☠️','#5fa05f','พิษ'],frozen:['❄️','#6bb7e8','เยือกแข็ง'],bleed:['🩸','#c0392b','เลือดออก'],ko:['💤','#8a8f98','สลบ'],stun:['💫','#d8c43a','มึนงง'],held:['⛓️','#8a6a3a','ถูกจับ'],fear:['😱','#8e5fc0','กลัว'],invis:['👻','#e8e8ee','มองไม่เห็น'],bless:['✨','#e0b83a','ได้รับพร']};
+const chips=t=>`<div class="row" style="width:100%">${Object.entries(ST).map(([k,v])=>`<button data-s="${k}" style="border-color:${v[1]};${(t.st||[]).includes(k)?'background:'+v[1]+'66':''}">${v[0]} ${v[2]}</button>`).join('')}${(t.st||[]).filter(x=>x[0]=='~').map(x=>`<button data-s="${esc(x)}" style="border-color:#7a8aa8;background:#7a8aa866">🏷️ ${esc(x.slice(1))} ✕</button>`).join('')}<button data-a="cs">＋ กำหนดเอง</button></div>`;
+function stRow(t,r,s){const L=(t.st||[]).map(x=>x[0]=='~'?{c:'#7a8aa8',l:x.slice(1)}:ST[x]?{c:ST[x][1],e:ST[x][0]}:null).filter(Boolean);if(!L.length)return;const k=Math.max(18,s.g*.4),fb=`bold ${k*.5}px 'Noto Serif Thai',serif`;cx.textAlign='center';cx.textBaseline='middle';
+L.forEach(i=>{cx.font=fb;i.w=i.l?cx.measureText(i.l).width+k*.7:k});const tot=L.reduce((a,i)=>a+i.w+4,-4);let x=t.x-tot/2;const y=t.y-r-k*.65;
+L.forEach(i=>{cx.fillStyle=i.c+'dd';cx.strokeStyle='#000a';cx.lineWidth=1.5;cx.beginPath();cx.roundRect?cx.roundRect(x,y-k/2,i.w,k,k/2):cx.rect(x,y-k/2,i.w,k);cx.fill();cx.stroke();if(i.l){cx.font=fb;cx.fillStyle='#fff';cx.fillText(i.l,x+i.w/2,y+1)}else{cx.font=`${k*.62}px sans-serif`;cx.fillStyle='#000';cx.fillText(i.e,x+i.w/2,y+1)}x+=i.w+4})}
+const AB=[['str','STR'],['dex','DEX'],['con','CON'],['int','INT'],['wis','WIS'],['cha','CHA']],mod=v=>{const m=Math.floor((v-10)/2);return(m>=0?'+':'')+m},tokById=id=>sc().tk.find(k=>k.id==id);
+function cardH(t){const f=(k,l,ty='text',w='')=>`<label class="cf ${w}">${l}<input data-k="${k}" type="${ty}" value="${esc(t[k]??'')}"></label>`,ta=(k,l)=>`<label>${l}<textarea data-k="${k}" rows="3">${esc(t[k]||'')}</textarea></label>`;
+return`<div class="row"><b style="flex:1;font-size:16px">${esc(t.n)}</b><button data-a="pc" class="${S.pc==t.id?'on':''}">${S.pc==t.id?'🙈 เลิกโชว์ผู้เล่น':'📣 โชว์ให้ผู้เล่น'}</button><button data-a="cc">✕</button></div><div class="row">${f('n','ชื่อ','text','w2')}${f('lv','ระดับ/CR')}${f('hp','HP','number')}${f('mx','HP สูงสุด','number')}${f('ac','เกราะ AC')}${f('sp','ความเร็ว (ฟุต)')}</div><div class="row">${AB.map(([k,l])=>`<label class="cf ab">${l}<input data-k="${k}" type="number" value="${t[k]??10}"><span id="m_${k}">${mod(t[k]??10)}</span></label>`).join('')}</div>${ta('sk','สกิล / ความสามารถ')}${ta('tr','นิสัย / บุคลิก')}${ta('bs','ประวัติ')}${ta('nt','โน้ต DM (ผู้เล่นไม่เห็น)')}`}
+function openCard(id){const t=tokById(id);if(!t)return;CID=id;const b=$('#card');b.innerHTML=cardH(t);b.hidden=0}
+function pcard(){const b=$('#pcard'),t=S.pc&&S.scenes.flatMap(s=>s.tk).find(k=>k.id==S.pc);if(!PL||!t){b.hidden=1;return}const row=(l,v)=>v?`<p><b>${l}</b> ${esc(v)}</p>`:'';
+b.innerHTML=`<h2>${t.img?`<img src="${t.img}" style="width:40px;height:40px;border-radius:50%;vertical-align:middle"> `:(t.e||'')+' '}${esc(t.n)}</h2>`+row('ระดับ/CR',t.lv)+row('เกราะ',t.ac)+row('ความเร็ว',t.sp)+(t.hp!=null&&t.mx?row('HP',t.hp+'/'+t.mx):'')+(AB.some(a=>t[a[0]]!=null)?`<p>${AB.map(([k,l])=>`<b>${l}</b> ${t[k]??10} (${mod(t[k]??10)})`).join(' · ')}</p>`:'')+row('สกิล',t.sk)+row('นิสัย',t.tr)+row('ประวัติ',t.bs);b.hidden=0}
+$('#card').oninput=e=>{const k=e.target.dataset.k,t=tokById(CID);if(!k||!t)return;let v=e.target.value;if(e.target.type=='number')v=v===''?null:+v;t[k]=v;if(k=='mx'&&t.hp==null)t.hp=v;if(AB.some(a=>a[0]==k)){const m=$('#m_'+k);if(m)m.textContent=mod(v??10)}draw();save()};
+$('#card').onclick=e=>{const a=e.target.dataset.a,t=tokById(CID);if(!a||!t)return;if(a=='cc'){$('#card').hidden=1;CID=null}if(a=='pc'){S.pc=S.pc==t.id?null:t.id;save();openCard(t.id)}};
 let ig=null;
 $('#insp').onpointerdown=e=>{if(e.target.id!='ig')return;const b=$('#insp'),r=cv.getBoundingClientRect();b.setPointerCapture(e.pointerId);ig={dx:e.clientX-r.left-b.offsetLeft,dy:e.clientY-r.top-b.offsetTop}};
 $('#insp').onpointermove=e=>{if(!ig)return;const r=cv.getBoundingClientRect();IP={x:e.clientX-r.left-ig.dx,y:e.clientY-r.top-ig.dy};place()};
 $('#insp').onpointerup=$('#insp').onpointercancel=()=>{ig=null};
 $('#insp').ondblclick=e=>{if(e.target.id=='ig'){IP=null;place()}};
 $('#insp').oninput=e=>{const t=sc().tk.find(k=>k.id==sel);if(t){t.n=e.target.value;draw();save()}};
-$('#insp').onclick=e=>{const a=e.target.dataset.a,s=sc(),t=s.tk.find(k=>k.id==sel);if(!a||!t)return;
-if(a=='cl')IC=1;if(a=='ex')IC=0;
+$('#insp').onclick=e=>{const a=e.target.dataset.a,s=sc(),t=s.tk.find(k=>k.id==sel),sk=e.target.dataset.s;if(t&&sk){t.st=t.st||[];const i=t.st.indexOf(sk);i<0?t.st.push(sk):t.st.splice(i,1);insp();draw();save();return}if(!a||!t)return;
+if(a=='cl')IC=1;if(a=='ex')IC=0;if(a=='st')IS=!IS;if(a=='cd')openCard(t.id);
+if(a=='cs'){const n=(prompt('ชื่อสถานะ')||'').trim();if(n){t.st=t.st||[];t.st.push('~'+n)}}
+if(a=='dm'){if(t.mx==null)alert('ตั้ง HP ก่อน');else{const v=+prompt('ดาเมจใส่ค่าลบ เช่น -5 ฮีลใส่ค่าบวก เช่น +3','-1');if(v)t.hp=Math.max(0,Math.min(t.mx,t.hp+v))}}
 if((a=='hm'||a=='hp')&&t.mx!=null)t.hp=Math.max(0,Math.min(t.mx,t.hp+(a=='hp'?1:-1)));
 if(a=='hs'){const v=+prompt('HP สูงสุด',t.mx||10);if(v>0){t.mx=v;t.hp=v}}
 if(a=='sz'){t.s=t.s%4+1;snap(t)}if(a=='hd')t.h=t.h?0:1;
@@ -108,8 +124,8 @@ const ini=()=>`<div class="row"><button id="qn">▶ ตาถัดไป</butto
 const dat=()=>`<div class="row"><button id="qx">⬇ ส่งออกไฟล์</button><label class="btn">⬆ นำเข้าไฟล์<input type="file" accept=".json" id="qi" hidden></label></div><button id="qz" class="dng">ล้างข้อมูลทั้งหมด</button><p class="mut">ข้อมูลเก็บในเบราว์เซอร์เครื่องนี้ ย้ายเครื่องให้ส่งออกแล้วนำเข้าไฟล์</p>`;
 function pane(){$('#pb').innerHTML=[lib,scn,ini,dat][tab]();$('#pt').innerHTML=TN.map((n,i)=>`<button data-t="${i}" class="${i==tab?'on':''}">${n}</button>`).join('')}
 function tabs(){$('#tabs').innerHTML=S.scenes.map((s,i)=>`<button data-s="${i}" class="${i==S.cur?'on':''}">${esc(s.n)}</button>`).join('')}
-function setPL(v){PL=v;document.body.classList.toggle('pl',v);$('#back').hidden=!v||H;sel=null;insp();fit()}
-function go(i){S.cur=i;sel=null;tabs();insp();pane();fit();save()}
+function setPL(v){PL=v;document.body.classList.toggle('pl',v);$('#back').hidden=!v||H;sel=null;insp();fit();pcard()}
+function go(i){S.cur=i;sel=null;$('#card').hidden=1;CID=null;tabs();insp();pane();fit();save()}
 function rd(f,m,ty,q,sq,cb){const i=new Image();i.onload=()=>{const m2=Math.min(i.width,i.height),k=Math.min(1,m/(sq?m2:Math.max(i.width,i.height))),w=Math.round((sq?m2:i.width)*k),h=Math.round((sq?m2:i.height)*k),c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(i,sq?(i.width-m2)/2:0,sq?(i.height-m2)/2:0,sq?m2:i.width,sq?m2:i.height,0,0,w,h);cb(c.toDataURL(ty,q),w,h)};i.src=URL.createObjectURL(f)}
 $('#tabs').onclick=e=>{const b=e.target.closest('button');if(b)go(+b.dataset.s)};
 $('#pt').onclick=e=>{const b=e.target.closest('button');if(b){tab=+b.dataset.t;pane()}};
@@ -134,9 +150,9 @@ if(i=='qum'&&f)return rd(f,1600,'image/jpeg',.82,0,(u,w,h)=>{S.scenes.push({...m
 if(i=='qut'&&f)return rd(f,160,'image/png',1,1,u=>{S.lib.push({img:u,n:f.name.replace(/\.\w+$/,'')});save();pane()});
 if(i=='qi'&&f){const r=new FileReader();r.onload=()=>{try{const o=JSON.parse(r.result);if(!o.scenes)throw 0;S=o;FC={};BG={};S.cur=0;sel=null;save();tabs();pane();insp();fit()}catch(x){alert('ไฟล์ไม่ถูกต้อง')}};r.readAsText(f);return}
 save();draw()};
-function sync(){const k=sc().id;load();if(sc().id!=k||ls!=sc().id){ls=sc().id;fit()}else draw()}
+function sync(){const k=sc().id;load();if(sc().id!=k||ls!=sc().id){ls=sc().id;fit()}else draw();pcard()}
 if(BC)BC.onmessage=()=>{if(PL)sync()};addEventListener('storage',e=>{if(PL&&e.key==Q)sync()});
 load();ls=sc().id;if(innerWidth<760)$('#panel').classList.add('off');
 new ResizeObserver(()=>draw()).observe($('#stage'));
-tabs();pane();setPL(PL);setTimeout(fit,60);
+tabs();pane();setPL(PL);setTimeout(fit,60);try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 </script></body></html>
